@@ -3,6 +3,7 @@
 import pygame
 import time
 import random
+from random import choice
 
 # Initialize pygame and sound mixer
 pygame.init()
@@ -15,6 +16,8 @@ game_status = 'menu'
 soundplayed = False
 time_since_last_idle = 0
 time_until_next_idle = random.randint(3000,8000)
+current_anim = "idle"
+idle_delay_set_yet = False
 
 START_BTN_POS = (630,175)
 EXIT_BTN_POS = (630,425)
@@ -40,7 +43,7 @@ exit_btn_rect = pygame.Rect(EXIT_BTN_POS_X, EXIT_BTN_POS_Y, 445*0.8, 168*0.8)
 pygame.display.set_caption('Horsey Simulator')
 
 # Animation Lists
-horse = pygame.transform.scale_by(pygame.image.load('/Users/nicolezhang/MyCode/Horse animations basic/tile000.png'), (8))
+horse = pygame.transform.scale_by(pygame.image.load('/Users/nicolezhang/MyCode/Horse animations basic/tile001.png'), (8))
 # horse_tail_swish = [pygame.image.load('tile000.png'), pygame.image.load('tile001.png'), pygame.image.load('tile002.png'), pygame.image.load('tile003.png'), pygame.image.load('tile004.png'), pygame.image.load('tile05.png'), pygame.image.load('tile006.png'), pygame.image.load('tile007.png'), pygame.image.load('tile008.png'), pygame.image.load('tile009.png')]
 # horse_graze = [pygame.image.load('tile0010.png'), pygame.image.load('tile011.png'), pygame.image.load('tile012.png'), pygame.image.load('tile013.png'), pygame.image.load('tile014.png'), pygame.image.load('tile015.png'), pygame.image.load('tile016.png')]
 # horse_walk = [pygame.image.load('tile018.png'), pygame.image.load('tile019.png'), pygame.image.load('tile020.png'), pygame.image.load('tile021.png'), pygame.image.load('tile022.png'), pygame.image.load('tile023.png'), pygame.image.load('tile024.png'), pygame.image.load('tile025.png'), pygame.image.load('tile026.png')]
@@ -56,7 +59,7 @@ for i in range(0,9):
 horse_graze = []
 for i in range(10,17):
      img_horse_graze = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), (8))
-     horse_graze.append(img_horse_tail_swish)
+     horse_graze.append(img_horse_graze)
 
 # Animation Dictionaries
 horse_tail_anim = {
@@ -71,7 +74,7 @@ horse_graze_anim = {
     "frames": horse_graze,       # List of images
     "index": 1,                       # Current frame index
     "last_update": 0,                # When it last changed frames
-    "delay": 200,                    # How often it updates (in ms)
+    "delay": 350,                    # How often it updates (in ms)
     "pos": (-30, 50)                 # Where to draw the image
 }
 
@@ -108,22 +111,35 @@ horse_gallop_anim = {
 }
 
 
-current_anim = {
-    "idle": "idle",
-    "tail": horse_tail_anim,
-    "walk": horse_walk_anim,
-    "jump": horse_jump_anim,
-    "canter": horse_canter_anim,
-    "gallop": horse_gallop_anim
-}
-
+# animations = {
+#     "idle": "idle",
+#     "tail": horse_tail_anim,
+#     "graze": horse_graze_anim,
+#     "walk": horse_walk_anim,
+#     "jump": horse_jump_anim,
+#     "canter": horse_canter_anim,
+#     "gallop": horse_gallop_anim
+# }
 
 # Functions
 
 def update_animation(anim):
+    global current_anim
+    global idle_delay_set_yet
+    global idle_delay
     current_time = pygame.time.get_ticks()
     if current_time - anim["last_update"] >= anim["delay"]:
-        anim["index"] = (anim["index"] + 1) % len(anim["frames"])
+        if anim["index"] == len(anim["frames"]):
+            if idle_delay_set_yet == False:
+                idle_delay = current_time
+                idle_delay_set_yet = True
+            print(idle_delay, current_time)
+            if current_time - idle_delay >= 200:
+                current_anim = "idle"
+                print("a")
+                anim["index"] = 0
+        else:
+            anim["index"] += 1
         anim["last_update"] = current_time
     screen.blit(anim["frames"][anim["index"]], anim["pos"])
 
@@ -131,27 +147,22 @@ def update_screen(game_status):
     if game_status == 'menu':
             global time_since_last_idle
             global time_until_next_idle
-            current_anim = "idle"
+            global current_anim
             #global frame_horse_tail_swish
             screen.fill((255,255,255))
             # screen.blit(horse,(-30,200))
             screen.blit(start_btn,(630,175))
             screen.blit(exit_btn,(630,425))
-
             current_time = pygame.time.get_ticks()
-            if current_anim == "idle":
-                if current_time - time_since_last_idle >= time_until_next_idle:
-                    print(current_time, time_since_last_idle)
-                    random_idle = random.randint(1,2)
-                    if random_idle == 1:
-                        update_animation(horse_tail_anim)
-                    else:
-                        update_animation(horse_graze_anim)
+            if current_time - time_since_last_idle >= time_until_next_idle:
+                    current_anim = choice(["tail", "graze"])
                     time_since_last_idle = current_time
                     time_until_next_idle = random.randint(3000,8000)
-                else:
-                    screen.blit(horse, (-30,50))
-            elif current_anim == "poo":
+            if current_anim == "idle":
+                 screen.blit(horse, (-30,50))
+            elif current_anim == "graze":
+                update_animation(horse_graze_anim)
+            elif current_anim == "tail":
                 update_animation(horse_tail_anim)
             pygame.display.update()
             
