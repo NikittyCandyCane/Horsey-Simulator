@@ -22,6 +22,9 @@ idle_delay_set_yet = False
 START_BTN_POS = (630,175)
 EXIT_BTN_POS = (630,425)
 
+HORSE_X = -30
+HORSE_Y = 130
+
 #UNPACK TUPLES
 (START_BTN_POS_X, START_BTN_POS_Y) = (START_BTN_POS)
 (EXIT_BTN_POS_X, EXIT_BTN_POS_Y) = (EXIT_BTN_POS)
@@ -43,7 +46,7 @@ exit_btn_rect = pygame.Rect(EXIT_BTN_POS_X, EXIT_BTN_POS_Y, 445*0.8, 168*0.8)
 pygame.display.set_caption('Horsey Simulator')
 
 # Animation Lists
-horse = pygame.transform.scale_by(pygame.image.load('/Users/nicolezhang/MyCode/Horse animations basic/tile001.png'), (8))
+horse_still = pygame.transform.scale_by(pygame.image.load('/Users/nicolezhang/MyCode/Horse animations basic/tile001.png'), (8))
 # horse_tail_swish = [pygame.image.load('tile000.png'), pygame.image.load('tile001.png'), pygame.image.load('tile002.png'), pygame.image.load('tile003.png'), pygame.image.load('tile004.png'), pygame.image.load('tile05.png'), pygame.image.load('tile006.png'), pygame.image.load('tile007.png'), pygame.image.load('tile008.png'), pygame.image.load('tile009.png')]
 # horse_graze = [pygame.image.load('tile0010.png'), pygame.image.load('tile011.png'), pygame.image.load('tile012.png'), pygame.image.load('tile013.png'), pygame.image.load('tile014.png'), pygame.image.load('tile015.png'), pygame.image.load('tile016.png')]
 # horse_walk = [pygame.image.load('tile018.png'), pygame.image.load('tile019.png'), pygame.image.load('tile020.png'), pygame.image.load('tile021.png'), pygame.image.load('tile022.png'), pygame.image.load('tile023.png'), pygame.image.load('tile024.png'), pygame.image.load('tile025.png'), pygame.image.load('tile026.png')]
@@ -61,65 +64,72 @@ for i in range(10,17):
      img_horse_graze = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), (8))
      horse_graze.append(img_horse_graze)
 
+parallax_bg = []
+for i in range(320):
+     i = f"{i:03}"
+     img_parallax_bg = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Parallax background/frame_{i}_delay-0.05s.gif'), (1.39))
+     parallax_bg.append(img_parallax_bg)
+
 # Animation Dictionaries
 horse_tail_anim = {
     "frames": horse_tail_swish,       # List of images
-    "index": 1,                       # Current frame index
+    "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 200,                    # How often it updates (in ms)
-    "pos": (-30, 50)                 # Where to draw the image
+    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
 }
 
 horse_graze_anim = {
     "frames": horse_graze,       # List of images
-    "index": 1,                       # Current frame index
+    "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 350,                    # How often it updates (in ms)
-    "pos": (-30, 50)                 # Where to draw the image
+    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
 }
 
 horse_walk_anim = {
     "frames": horse_tail_swish,       # List of images
-    "index": 1,                       # Current frame index
+    "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 200,                    # How often it updates (in ms)
-    "pos": (-30, 50)                 # Where to draw the image
+    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
 }
 
 horse_jump_anim = {
     "frames": horse_tail_swish,       # List of images
-    "index": 1,                       # Current frame index
+    "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 200,                    # How often it updates (in ms)
-    "pos": (-30, 50)                 # Where to draw the image
+    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
 }
 
 horse_canter_anim = {
     "frames": horse_tail_swish,       # List of images
-    "index": 1,                       # Current frame index
+    "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 200,                    # How often it updates (in ms)
-    "pos": (-30, 50)                 # Where to draw the image
+    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
 }
 
 horse_gallop_anim = {
     "frames": horse_tail_swish,       # List of images
-    "index": 1,                       # Current frame index
+    "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 200,                    # How often it updates (in ms)
-    "pos": (-30, 50)                 # Where to draw the image
+    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
 }
 
+parallax_bg_anim = {
+    "frames": parallax_bg,       # List of images
+    "index": 0,                       # Current frame index
+    "last_update": 0,                # When it last changed frames
+    "delay": 30,                    # How often it updates (in ms)
+    "pos": (0, 0)                 # Where to draw the image
+}
 
-# animations = {
-#     "idle": "idle",
-#     "tail": horse_tail_anim,
-#     "graze": horse_graze_anim,
-#     "walk": horse_walk_anim,
-#     "jump": horse_jump_anim,
-#     "canter": horse_canter_anim,
-#     "gallop": horse_gallop_anim
-# }
+pygame.mixer.music.load("Royale High Campus 3 Music - Castle Dorms (Flowering & Tidalglow).mp3")
+pygame.mixer.music.set_volume(0.4)
+pygame.mixer.music.play(-1)
 
 # Functions
 
@@ -127,20 +137,16 @@ def update_animation(anim):
     global current_anim
     global idle_delay_set_yet
     global idle_delay
+
     current_time = pygame.time.get_ticks()
+
     if current_time - anim["last_update"] >= anim["delay"]:
-        if anim["index"] == len(anim["frames"]):
-            if idle_delay_set_yet == False:
-                idle_delay = current_time
-                idle_delay_set_yet = True
-            print(idle_delay, current_time)
-            if current_time - idle_delay >= 200:
-                current_anim = "idle"
-                print("a")
-                anim["index"] = 0
-        else:
-            anim["index"] += 1
         anim["last_update"] = current_time
+        anim["index"] = (anim["index"] + 1) % len(anim["frames"])
+        if anim['index'] == 0:
+            current_anim = 'idle'
+            
+    # Blit the current frame (after fixing index logic)
     screen.blit(anim["frames"][anim["index"]], anim["pos"])
 
 def update_screen(game_status):
@@ -150,6 +156,7 @@ def update_screen(game_status):
             global current_anim
             #global frame_horse_tail_swish
             screen.fill((255,255,255))
+            screen.blit(parallax_bg[0], (0,0))
             # screen.blit(horse,(-30,200))
             screen.blit(start_btn,(630,175))
             screen.blit(exit_btn,(630,425))
@@ -159,7 +166,7 @@ def update_screen(game_status):
                     time_since_last_idle = current_time
                     time_until_next_idle = random.randint(3000,8000)
             if current_anim == "idle":
-                 screen.blit(horse, (-30,50))
+                screen.blit(horse_still, (HORSE_X, HORSE_Y))
             elif current_anim == "graze":
                 update_animation(horse_graze_anim)
             elif current_anim == "tail":
