@@ -19,6 +19,9 @@ time_until_next_idle = random.randint(3000,8000)
 current_anim = "idle"
 idle_delay_set_yet = False
 clock = pygame.time.Clock()
+jumping = False
+
+HORSE_WALK_LOOP_COUNT = 0
 
 START_BTN_POS = (630,175)
 EXIT_BTN_POS = (630,425)
@@ -76,6 +79,22 @@ for i in range(10,17):
      img_horse_graze = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), (HORSE_SCALE['scale']))
      horse_graze.append(img_horse_graze)
 
+horse_jump = []
+for i in range(14):
+     i = f"{i:02}"
+     img_horse_jump = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animation jump/jump{i}.png'), 2)
+     horse_jump.append(img_horse_jump)
+
+horse_canter = []
+for i in range(27,35):
+     img_horse_canter = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), 2)
+     horse_canter.append(img_horse_canter)
+
+horse_walk = []
+for i in range(18,26):
+     img_horse_walk = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), 2)
+     horse_walk.append(img_horse_walk)
+
 parallax_bg = []
 for i in range(320):
      i = f"{i:03}"
@@ -100,27 +119,27 @@ horse_graze_anim = {
 }
 
 horse_walk_anim = {
-    "frames": horse_tail_swish,       # List of images
+    "frames": horse_walk,       # List of images
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
-    "delay": 200,                    # How often it updates (in ms)
-    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
+    "delay": 150,                    # How often it updates (in ms)
+    "pos": (210, 520)                 # Where to draw the image
 }
 
 horse_jump_anim = {
-    "frames": horse_tail_swish,       # List of images
+    "frames": horse_jump,       # List of images
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 200,                    # How often it updates (in ms)
-    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
+    "pos": (120, 520)                 # Where to draw the image
 }
 
 horse_canter_anim = {
-    "frames": horse_tail_swish,       # List of images
+    "frames": horse_canter,       # List of images
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
-    "delay": 200,                    # How often it updates (in ms)
-    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
+    "delay": 100,                    # How often it updates (in ms)
+    "pos": (210, 520)                 # Where to draw the image
 }
 
 horse_gallop_anim = {
@@ -135,7 +154,7 @@ parallax_bg_anim = {
     "frames": parallax_bg,       # List of images
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
-    "delay": 30,                    # How often it updates (in ms)
+    "delay": 80,                    # How often it updates (in ms)
     "pos": (0, 0)                 # Where to draw the image
 }
 
@@ -164,6 +183,7 @@ def update_animation(anim):
 
 def shrink_horse():
     global horse_still_for_scaling
+
     current_time = pygame.time.get_ticks()
 
     if current_time - HORSE_SCALE['last_update'] >= HORSE_SCALE['delay']:
@@ -171,33 +191,31 @@ def shrink_horse():
         HORSE_SCALE['scale'] -= 0.5
 
         if HORSE_SCALE['scale'] < 2.1:
-            HORSE_SCALE['scale'] = 2.1
+            #HORSE_SCALE['scale'] = 2.1
+            pass
 
-        # Rescale the original image, not the already scaled one
         horse_still_for_scaling = pygame.transform.scale_by(horse_still_original, HORSE_SCALE['scale'])
 
-    # Original image dimensions
-    orig_width, orig_height = horse_still_original.get_size()
+    # Get scaled size
+    scaled_width = horse_still_for_scaling.get_width()
+    scaled_height = horse_still_for_scaling.get_height()
 
-    # New scaled image dimensions
-    new_width, new_height = horse_still_for_scaling.get_size()
+    # Get original image size (for positioning math)
+    original_width = horse_still.get_width()
+    original_height = horse_still.get_height()
 
-    # Calculate the original center position of the horse on the screen
-    center_x = HORSE_X + orig_width // 2
-    center_y = HORSE_Y + orig_height // 2
+    # Find original bottom Y and center X
+    original_bottom_y = HORSE_Y + original_height
+    original_center_x = HORSE_X + original_width // 2
 
-    # Calculate new top-left so scaled image stays centered on original center
-    new_x = center_x - new_width // 2
-    new_y = center_y - new_height // 2
+    # Now calculate new top-left position for blit
+    blit_x = original_center_x - scaled_width // 2
+    blit_y = original_bottom_y - scaled_height
+    screen.blit(horse_still_for_scaling, (blit_x, blit_y))
 
-    # Draw the scaled horse at the new position
-    screen.blit(horse_still_for_scaling, (new_x, new_y))
+    # Debug print
+    print(f"[DEBUG] Scale: {HORSE_SCALE['scale']} | Blitting at: ({blit_x}, {blit_y})")
 
-    print(f"Scale: {HORSE_SCALE['scale']}")
-    print(f"Original size: {orig_width}x{orig_height}")
-    print(f"Scaled size: {new_width}x{new_height}")
-    print(f"Center: ({center_x}, {center_y})")
-    print(f"Blitting at: ({new_x}, {new_y})")
 
 def update_screen(game_status):
     if game_status == 'menu':
@@ -225,9 +243,23 @@ def update_screen(game_status):
             pygame.display.update()
 
     elif game_status == 'playing':
+         global HORSE_WALK_LOOP_COUNT
          screen.blit(parallax_bg[0], (0,0))
          if HORSE_SCALE['scale'] > 2:
           shrink_horse()
+         else:
+             if HORSE_WALK_LOOP_COUNT < 120:
+                HORSE_WALK_LOOP_COUNT += 1
+                parallax_bg_anim['delay'] -= 0.5
+                update_animation(parallax_bg_anim)
+                update_animation(horse_walk_anim)
+             else:
+                 update_animation(parallax_bg_anim)
+                 if jumping:
+                    update_animation(horse_jump_anim)
+                 else:
+                    update_animation(horse_canter_anim)
+            
          pygame.display.update()
 
 # Main game loop
@@ -239,11 +271,13 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if start_btn_rect.collidepoint(pygame.mouse.get_pos()):
                 game_status = 'playing'
+        if event.type == pygame.K_SPACE and game_status == 'playing':
+            jumping = True
+            print('a')
     if start_btn_rect.collidepoint(pygame.mouse.get_pos()) or exit_btn_rect.collidepoint(pygame.mouse.get_pos()):
         if soundplayed == False:
             pygame.mixer.Sound.play(btn_hover_sound)
-            soundplayed = True
-            
+            soundplayed = True            
     else:
          soundplayed = False
     clock.tick(60)
