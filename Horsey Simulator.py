@@ -21,6 +21,15 @@ idle_delay_set_yet = False
 clock = pygame.time.Clock()
 jumping = False
 
+playing_start_time = None
+initial_obstacle_wait = 5000 
+
+
+obstacles = []
+last_obstacle_time = 0
+obstacle_spawn_delay = 2000  # ms
+
+HORSE_POS_AFTER_SHRINK = (170,455)
 HORSE_WALK_LOOP_COUNT = 0
 
 START_BTN_POS = (630,175)
@@ -52,15 +61,21 @@ exit_btn = pygame.transform.scale_by(exit_btn, 0.8)
 start_btn_rect = pygame.Rect(START_BTN_POS_X, START_BTN_POS_Y, 448*0.8, 170*0.8)
 exit_btn_rect = pygame.Rect(EXIT_BTN_POS_X, EXIT_BTN_POS_Y, 445*0.8, 168*0.8)
 
-# Set Icon and Caption
-pygame.display.set_caption('Horsey Simulator')
-
 # Load original unscaled
 horse_still_original = pygame.image.load('/Users/nicolezhang/MyCode/Horse animations basic/tile001.png')
+
+# Set Icon and Caption
+pygame.display.set_caption('Horsey Simulator')
+pygame.display.set_icon(horse_still_original)
 
 # Make scaled versions for menu and animation
 horse_still = pygame.transform.scale_by(horse_still_original, 8)
 horse_still_for_scaling = pygame.transform.scale_by(horse_still_original, HORSE_SCALE['scale'])
+
+obstacle_images = [
+    '/Users/nicolezhang/MyCode/Obstacles/log.png',
+    '/Users/nicolezhang/MyCode/Obstacles/rock.png'
+]
 
 # horse_tail_swish = [pygame.image.load('tile000.png'), pygame.image.load('tile001.png'), pygame.image.load('tile002.png'), pygame.image.load('tile003.png'), pygame.image.load('tile004.png'), pygame.image.load('tile05.png'), pygame.image.load('tile006.png'), pygame.image.load('tile007.png'), pygame.image.load('tile008.png'), pygame.image.load('tile009.png')]
 # horse_graze = [pygame.image.load('tile0010.png'), pygame.image.load('tile011.png'), pygame.image.load('tile012.png'), pygame.image.load('tile013.png'), pygame.image.load('tile014.png'), pygame.image.load('tile015.png'), pygame.image.load('tile016.png')]
@@ -82,17 +97,17 @@ for i in range(10,17):
 horse_jump = []
 for i in range(14):
      i = f"{i:02}"
-     img_horse_jump = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animation jump/jump{i}.png'), 2)
+     img_horse_jump = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animation jump/jump{i}.png'), 3)
      horse_jump.append(img_horse_jump)
 
 horse_canter = []
 for i in range(27,35):
-     img_horse_canter = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), 2)
+     img_horse_canter = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), 3)
      horse_canter.append(img_horse_canter)
 
 horse_walk = []
 for i in range(18,26):
-     img_horse_walk = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), 2)
+     img_horse_walk = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), 3)
      horse_walk.append(img_horse_walk)
 
 parallax_bg = []
@@ -123,7 +138,7 @@ horse_walk_anim = {
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 150,                    # How often it updates (in ms)
-    "pos": (210, 520)                 # Where to draw the image
+    "pos": HORSE_POS_AFTER_SHRINK                 # Where to draw the image
 }
 
 horse_jump_anim = {
@@ -131,7 +146,7 @@ horse_jump_anim = {
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 200,                    # How often it updates (in ms)
-    "pos": (120, 520)                 # Where to draw the image
+    "pos": HORSE_POS_AFTER_SHRINK                 # Where to draw the image
 }
 
 horse_canter_anim = {
@@ -139,7 +154,7 @@ horse_canter_anim = {
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 100,                    # How often it updates (in ms)
-    "pos": (210, 520)                 # Where to draw the image
+    "pos": HORSE_POS_AFTER_SHRINK                 # Where to draw the image
 }
 
 horse_gallop_anim = {
@@ -147,7 +162,7 @@ horse_gallop_anim = {
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 200,                    # How often it updates (in ms)
-    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
+    "pos": HORSE_POS_AFTER_SHRINK                 # Where to draw the image
 }
 
 parallax_bg_anim = {
@@ -161,6 +176,23 @@ parallax_bg_anim = {
 pygame.mixer.music.load("Royale High Campus 3 Music - Castle Dorms (Flowering & Tidalglow).mp3")
 pygame.mixer.music.set_volume(0.4)
 pygame.mixer.music.play(-1)
+
+# Obstacle Class
+class Obstacle:
+    def __init__(self, image, x, y, speed):
+        self.image = pygame.image.load(image)
+        self.image = pygame.transform.scale_by(self.image, 0.3)
+        self.rect = self.image.get_rect(midbottom=(x, y))
+        self.speed = speed
+
+    def update(self):
+        self.rect.x -= self.speed
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
+
+    def is_off_screen(self):
+        return self.rect.right < 0
 
 # Functions
 
@@ -190,10 +222,6 @@ def shrink_horse():
         HORSE_SCALE['last_update'] = current_time
         HORSE_SCALE['scale'] -= 0.5
 
-        if HORSE_SCALE['scale'] < 2.1:
-            #HORSE_SCALE['scale'] = 2.1
-            pass
-
         horse_still_for_scaling = pygame.transform.scale_by(horse_still_original, HORSE_SCALE['scale'])
 
     # Get scaled size
@@ -213,8 +241,8 @@ def shrink_horse():
     blit_y = original_bottom_y - scaled_height
     screen.blit(horse_still_for_scaling, (blit_x, blit_y))
 
-    # Debug print
-    print(f"[DEBUG] Scale: {HORSE_SCALE['scale']} | Blitting at: ({blit_x}, {blit_y})")
+    if HORSE_SCALE['scale'] < 4:
+            print(blit_x,blit_y)
 
 
 def update_screen(game_status):
@@ -244,13 +272,15 @@ def update_screen(game_status):
 
     elif game_status == 'playing':
          global HORSE_WALK_LOOP_COUNT
+         global obstacles, last_obstacle_time, obstacle_spawn_delay
          screen.blit(parallax_bg[0], (0,0))
-         if HORSE_SCALE['scale'] > 2:
+         if HORSE_SCALE['scale'] > 3:
           shrink_horse()
          else:
              if HORSE_WALK_LOOP_COUNT < 120:
                 HORSE_WALK_LOOP_COUNT += 1
                 parallax_bg_anim['delay'] -= 0.5
+                horse_walk_anim['delay'] -= 0.5
                 update_animation(parallax_bg_anim)
                 update_animation(horse_walk_anim)
              else:
@@ -259,6 +289,28 @@ def update_screen(game_status):
                     update_animation(horse_jump_anim)
                  else:
                     update_animation(horse_canter_anim)
+                # === Handle obstacle generation ===
+                 current_time = pygame.time.get_ticks()
+
+                 # Only spawn obstacles after waiting initial delay from when playing started
+                 if playing_start_time is not None and (current_time - playing_start_time) > initial_obstacle_wait:
+                     if current_time - last_obstacle_time > obstacle_spawn_delay:
+                         img = random.choice(obstacle_images)
+                         y = 650
+                         speed = 16.7
+                         x = screen.get_width() + 100  # Start off-screen to the right
+                         obstacles.append(Obstacle(img, x, y, speed))
+                         last_obstacle_time = current_time
+
+                
+                 # === Move and draw obstacles ===
+                 for obstacle in obstacles[:]:
+                     obstacle.update()
+                     obstacle.draw(screen)
+ 
+                     # Remove if it goes off screen (so list doesn't grow forever)
+                     if obstacle.is_off_screen():
+                         obstacles.remove(obstacle)
             
          pygame.display.update()
 
@@ -271,11 +323,15 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if start_btn_rect.collidepoint(pygame.mouse.get_pos()):
                 game_status = 'playing'
+                playing_start_time = pygame.time.get_ticks()  # record start time here
+            if exit_btn_rect.collidepoint(pygame.mouse.get_pos()):
+                pygame.mixer.quit()
+                pygame.quit()
         if event.type == pygame.K_SPACE and game_status == 'playing':
             jumping = True
             print('a')
     if start_btn_rect.collidepoint(pygame.mouse.get_pos()) or exit_btn_rect.collidepoint(pygame.mouse.get_pos()):
-        if soundplayed == False:
+        if soundplayed == False and game_status == 'menu':
             pygame.mixer.Sound.play(btn_hover_sound)
             soundplayed = True            
     else:
