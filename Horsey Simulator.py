@@ -44,6 +44,19 @@ HORSE_SCALE = {
 HORSE_X = -30
 HORSE_Y = 130
 
+
+show_start_text = True
+horse_y_pos_shrink = 455
+horse_x_pos_shrink = 170
+y_velocity = 0
+jump_strength = 30  # how high the horse jumps
+gravity = 2.3        # how fast the horse falls back down
+ground_level = 455  # the normal horse y position
+
+color_stage = 0
+color_count = 0
+color_change = 11.8
+
 #UNPACK TUPLES
 (START_BTN_POS_X, START_BTN_POS_Y) = (START_BTN_POS)
 (EXIT_BTN_POS_X, EXIT_BTN_POS_Y) = (EXIT_BTN_POS)
@@ -138,15 +151,17 @@ horse_walk_anim = {
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 150,                    # How often it updates (in ms)
-    "pos": HORSE_POS_AFTER_SHRINK                 # Where to draw the image
+    "pos": (horse_x_pos_shrink, horse_y_pos_shrink)                 # Where to draw the image
 }
 
 horse_jump_anim = {
     "frames": horse_jump,       # List of images
-    "index": 0,                       # Current frame index
+    "index": 3,                       # Current frame index
     "last_update": 0,                # When it last changed frames
-    "delay": 200,                    # How often it updates (in ms)
-    "pos": HORSE_POS_AFTER_SHRINK                 # Where to draw the image
+    "delay": 100,                    # How often it updates (in ms)
+    "pos": [horse_x_pos_shrink, 455],               # Where to draw the image
+    "jump_delay": 30,
+    "jump_last_update": 0
 }
 
 horse_canter_anim = {
@@ -154,7 +169,7 @@ horse_canter_anim = {
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 100,                    # How often it updates (in ms)
-    "pos": HORSE_POS_AFTER_SHRINK                 # Where to draw the image
+    "pos": (horse_x_pos_shrink, horse_y_pos_shrink)                # Where to draw the image
 }
 
 horse_gallop_anim = {
@@ -162,7 +177,7 @@ horse_gallop_anim = {
     "index": 0,                       # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 200,                    # How often it updates (in ms)
-    "pos": HORSE_POS_AFTER_SHRINK                 # Where to draw the image
+    "pos": (horse_x_pos_shrink, horse_y_pos_shrink)                 # Where to draw the image
 }
 
 parallax_bg_anim = {
@@ -199,7 +214,6 @@ class Obstacle:
 def update_animation(anim):
     global current_anim
     global idle_delay_set_yet
-    global idle_delay
 
     current_time = pygame.time.get_ticks()
 
@@ -273,6 +287,10 @@ def update_screen(game_status):
     elif game_status == 'playing':
          global HORSE_WALK_LOOP_COUNT
          global obstacles, last_obstacle_time, obstacle_spawn_delay
+         global jumping, horse_y_pos_shrink, horse_x_pos_shrink
+         global color_count
+         global color_change
+         global color_stage
          screen.blit(parallax_bg[0], (0,0))
          if HORSE_SCALE['scale'] > 3:
           shrink_horse()
@@ -311,7 +329,61 @@ def update_screen(game_status):
                      # Remove if it goes off screen (so list doesn't grow forever)
                      if obstacle.is_off_screen():
                          obstacles.remove(obstacle)
-            
+                    
+                 if show_start_text:
+                     #font = pygame.font.SysFont(None, 48)
+                     #text_surface = font.render("Press Space to Start", True, (255, 255, 255))
+                     #text_rect = text_surface.get_rect(center=(screen.get_width()//2, 300))
+                     #screen.blit(text_surface, text_rect)
+
+                     text_color = (168, 50, 50)
+                    
+                     if color_count <= 10:
+                        if color_stage == 0:
+                            text_color = (text_color[0], text_color[1] + color_change, text_color[2])
+                            color_count += 1
+                        elif color_stage == 1:
+                            text_color = (text_color[0] - color_change, text_color[1], text_color[2])
+                            color_count += 1
+                        elif color_stage == 2:
+                            text_color = (text_color[0], text_color[1], text_color[2] + color_change)
+                            color_count += 1
+                        elif color_stage == 3:
+                            text_color = (text_color[0], text_color[1] - color_change, text_color[2])
+                            color_count += 1
+                        elif color_stage == 4:
+                            text_color = (text_color[0] + color_change, text_color[1], text_color[2])
+                            color_count += 1
+                        elif color_stage == 5:
+                            text_color = (text_color[0], text_color[1], text_color[2] - color_change)
+                            color_count += 1
+                        elif color_stage == 6:
+                            color_stage = 0
+                     else:
+                        color_stage += 1
+                        color_count = 0
+
+                     text_displayed = pygame.font.Font('Supermario.ttf', 60).render(str('PRESS SPACE TO START'), True, text_color)
+                     screen.blit(text_displayed, (200, 300))
+
+                 # Update vertical movement
+                 if jumping:
+                    global y_velocity
+                    current_time = pygame.time.get_ticks()
+
+                    if current_time - horse_jump_anim["jump_last_update"] >= horse_jump_anim["jump_delay"]:
+                        horse_jump_anim["jump_last_update"] = current_time
+                        y_velocity -= gravity
+                        horse_jump_anim['pos'][1] -= y_velocity
+                        print('pos:', horse_jump_anim['pos'][1], 'velocity:', y_velocity, 'ground_level:', ground_level)
+                        # If horse lands back down
+                        if horse_jump_anim['pos'][1] >= ground_level:
+                            horse_jump_anim['pos'][1] = ground_level
+                            jumping = False
+                            horse_jump_anim["index"] = 3
+                    
+
+
          pygame.display.update()
 
 # Main game loop
@@ -327,9 +399,14 @@ while True:
             if exit_btn_rect.collidepoint(pygame.mouse.get_pos()):
                 pygame.mixer.quit()
                 pygame.quit()
-        if event.type == pygame.K_SPACE and game_status == 'playing':
-            jumping = True
-            print('a')
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and game_status == 'playing' and not jumping:
+                jumping = True
+                y_velocity = jump_strength  # give it upward force
+                show_start_text = False
+
+
+
     if start_btn_rect.collidepoint(pygame.mouse.get_pos()) or exit_btn_rect.collidepoint(pygame.mouse.get_pos()):
         if soundplayed == False and game_status == 'menu':
             pygame.mixer.Sound.play(btn_hover_sound)
