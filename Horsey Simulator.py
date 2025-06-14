@@ -20,10 +20,12 @@ current_anim = "idle"
 idle_delay_set_yet = False
 clock = pygame.time.Clock()
 jumping = False
-
+first_jump = False
+done_walking = False
 playing_start_time = None
 initial_obstacle_wait = 5000 
-
+spacebar_pressed = False
+spacebar_held = False
 
 obstacles = []
 last_obstacle_time = 0
@@ -49,10 +51,11 @@ show_start_text = True
 horse_y_pos_shrink = 455
 horse_x_pos_shrink = 170
 y_velocity = 0
-jump_strength = 30  # how high the horse jumps
-gravity = 2.3        # how fast the horse falls back down
+jump_strength = 70  # how high the horse jumps
+gravity = 13        # how fast the horse falls back down
 ground_level = 455  # the normal horse y position
 
+text_color = (168, 50, 50)
 color_stage = 0
 color_count = 0
 color_change = 11.8
@@ -156,11 +159,11 @@ horse_walk_anim = {
 
 horse_jump_anim = {
     "frames": horse_jump,       # List of images
-    "index": 3,                       # Current frame index
+    "index": 6,                       # Current frame index
     "last_update": 0,                # When it last changed frames
-    "delay": 100,                    # How often it updates (in ms)
+    "delay": 80,                    # How often it updates (in ms)
     "pos": [horse_x_pos_shrink, 455],               # Where to draw the image
-    "jump_delay": 30,
+    "jump_delay": 40,
     "jump_last_update": 0
 }
 
@@ -227,6 +230,14 @@ def update_animation(anim):
     #anim["frames"][anim["index"]] = pygame.transform.scale_by(anim["frames"][anim["index"]], (HORSE_SCALE['scale']))
     screen.blit(anim["frames"][anim["index"]], anim["pos"])
 
+def detect_collision():
+    if jumping:
+        horse_mask = pygame.mask.from_surface(horse_jump_anim['frames'][horse_jump_anim['index']])
+    else:
+        horse_mask = pygame.mask.from_surface(horse_canter_anim['frames'][horse_canter_anim['index']])
+    mask_image = horse_mask.to_surface(setcolor=(255, 0, 0, 150), unsetcolor=(0, 0, 0, 0))
+    return mask_image
+
 def shrink_horse():
     global horse_still_for_scaling
 
@@ -255,15 +266,13 @@ def shrink_horse():
     blit_y = original_bottom_y - scaled_height
     screen.blit(horse_still_for_scaling, (blit_x, blit_y))
 
-    if HORSE_SCALE['scale'] < 4:
-            print(blit_x,blit_y)
-
 
 def update_screen(game_status):
     if game_status == 'menu':
             global time_since_last_idle
             global time_until_next_idle
             global current_anim
+            global done_walking
 
             #global frame_horse_tail_swish
             screen.blit(parallax_bg[0], (0,0))
@@ -290,7 +299,10 @@ def update_screen(game_status):
          global jumping, horse_y_pos_shrink, horse_x_pos_shrink
          global color_count
          global color_change
-         global color_stage
+         global color_stage, text_color
+         global spacebar_held
+         global y_velocity
+         global playing_start_time, show_start_text, first_jump
          screen.blit(parallax_bg[0], (0,0))
          if HORSE_SCALE['scale'] > 3:
           shrink_horse()
@@ -302,11 +314,15 @@ def update_screen(game_status):
                 update_animation(parallax_bg_anim)
                 update_animation(horse_walk_anim)
              else:
+                 spacebar_held = pygame.key.get_pressed()[pygame.K_SPACE]
+                 done_walking = True
                  update_animation(parallax_bg_anim)
                  if jumping:
                     update_animation(horse_jump_anim)
                  else:
                     update_animation(horse_canter_anim)
+                 mask_image = detect_collision()
+                 screen.blit(mask_image, (10,10))
                 # === Handle obstacle generation ===
                  current_time = pygame.time.get_ticks()
 
@@ -335,8 +351,6 @@ def update_screen(game_status):
                      #text_surface = font.render("Press Space to Start", True, (255, 255, 255))
                      #text_rect = text_surface.get_rect(center=(screen.get_width()//2, 300))
                      #screen.blit(text_surface, text_rect)
-
-                     text_color = (168, 50, 50)
                     
                      if color_count <= 10:
                         if color_stage == 0:
@@ -365,10 +379,20 @@ def update_screen(game_status):
 
                      text_displayed = pygame.font.Font('Supermario.ttf', 60).render(str('PRESS SPACE TO START'), True, text_color)
                      screen.blit(text_displayed, (200, 300))
+                
+                 if (spacebar_pressed or spacebar_held) and game_status == 'playing' and not jumping and done_walking:
+                                 jumping = True
+                                 if first_jump == False:
+                                     playing_start_time = pygame.time.get_ticks()  # record start time here
+                                     first_jump = True
+                                 y_velocity = jump_strength  # give it upward force
+                                 show_start_text = False
 
                  # Update vertical movement
                  if jumping:
-                    global y_velocity
+                    frame = horse_jump_anim["frames"][horse_jump_anim["index"]]
+                    pos = horse_jump_anim["pos"]
+
                     current_time = pygame.time.get_ticks()
 
                     if current_time - horse_jump_anim["jump_last_update"] >= horse_jump_anim["jump_delay"]:
@@ -380,7 +404,7 @@ def update_screen(game_status):
                         if horse_jump_anim['pos'][1] >= ground_level:
                             horse_jump_anim['pos'][1] = ground_level
                             jumping = False
-                            horse_jump_anim["index"] = 3
+                            horse_jump_anim["index"] = 6
                     
 
 
@@ -388,6 +412,7 @@ def update_screen(game_status):
 
 # Main game loop
 while True:
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.mixer.quit()
@@ -395,18 +420,14 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if start_btn_rect.collidepoint(pygame.mouse.get_pos()):
                 game_status = 'playing'
-                playing_start_time = pygame.time.get_ticks()  # record start time here
             if exit_btn_rect.collidepoint(pygame.mouse.get_pos()):
                 pygame.mixer.quit()
                 pygame.quit()
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and game_status == 'playing' and not jumping:
-                jumping = True
-                y_velocity = jump_strength  # give it upward force
-                show_start_text = False
-
-
-
+            if event.key == pygame.K_SPACE:
+                spacebar_pressed = True
+        else:
+            spacebar_pressed = False
     if start_btn_rect.collidepoint(pygame.mouse.get_pos()) or exit_btn_rect.collidepoint(pygame.mouse.get_pos()):
         if soundplayed == False and game_status == 'menu':
             pygame.mixer.Sound.play(btn_hover_sound)
