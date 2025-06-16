@@ -1,7 +1,6 @@
 
 # Import libraries
 import pygame
-import time
 import random
 from random import choice
 
@@ -46,13 +45,12 @@ HORSE_SCALE = {
 HORSE_X = -30
 HORSE_Y = 130
 
-
 show_start_text = True
 horse_y_pos_shrink = 455
 horse_x_pos_shrink = 170
 y_velocity = 0
 jump_strength = 70  # how high the horse jumps
-gravity = 13        # how fast the horse falls back down
+GRAVITY = 13        # how fast the horse falls back down
 ground_level = 455  # the normal horse y position
 
 text_color = (168, 50, 50)
@@ -202,12 +200,19 @@ class Obstacle:
         self.image = pygame.transform.scale_by(self.image, 0.3)
         self.rect = self.image.get_rect(midbottom=(x, y))
         self.speed = speed
+        self.mask = pygame.mask.from_surface(self.image)
+        self.mask_image = self.mask.to_surface(setcolor=(255, 0, 0, 150), unsetcolor=(0, 0, 0, 0))
+        self.x = x
+        self.y = y
 
     def update(self):
         self.rect.x -= self.speed
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
+    
+    def draw_mask(self, screen):
+        screen.blit(self.mask_image, (50,200))
 
     def is_off_screen(self):
         return self.rect.right < 0
@@ -236,6 +241,15 @@ def detect_collision():
     else:
         horse_mask = pygame.mask.from_surface(horse_canter_anim['frames'][horse_canter_anim['index']])
     mask_image = horse_mask.to_surface(setcolor=(255, 0, 0, 150), unsetcolor=(0, 0, 0, 0))
+
+    for obstacle in obstacles:
+        if jumping:
+            if horse_mask.overlap(obstacle.mask, (obstacle.x - horse_x_pos_shrink, obstacle.y - horse_jump_anim['pos'][1])):
+                print('collision detected')
+        else:
+            if horse_mask.overlap(obstacle.mask, (obstacle.x - horse_x_pos_shrink, obstacle.y - horse_y_pos_shrink)):
+                print('collision detected')
+
     return mask_image
 
 def shrink_horse():
@@ -274,13 +288,14 @@ def update_screen(game_status):
             global current_anim
             global done_walking
 
-            #global frame_horse_tail_swish
+            #blit the still frame of parallax_bg
             screen.blit(parallax_bg[0], (0,0))
 
             # screen.blit(horse,(-30,200))
             screen.blit(start_btn,(630,175))
             screen.blit(exit_btn,(630,425))
             current_time = pygame.time.get_ticks()
+            #If enough time has gone by, do an idle animation
             if current_time - time_since_last_idle >= time_until_next_idle:
                     current_anim = choice(["tail", "graze"])
                     time_since_last_idle = current_time
@@ -297,8 +312,7 @@ def update_screen(game_status):
          global HORSE_WALK_LOOP_COUNT
          global obstacles, last_obstacle_time, obstacle_spawn_delay
          global jumping, horse_y_pos_shrink, horse_x_pos_shrink
-         global color_count
-         global color_change
+         global color_count, color_change
          global color_stage, text_color
          global spacebar_held
          global y_velocity
@@ -335,23 +349,19 @@ def update_screen(game_status):
                          x = screen.get_width() + 100  # Start off-screen to the right
                          obstacles.append(Obstacle(img, x, y, speed))
                          last_obstacle_time = current_time
-
                 
                  # === Move and draw obstacles ===
                  for obstacle in obstacles[:]:
                      obstacle.update()
                      obstacle.draw(screen)
+                     obstacle.draw_mask(screen)
  
                      # Remove if it goes off screen (so list doesn't grow forever)
                      if obstacle.is_off_screen():
                          obstacles.remove(obstacle)
-                    
+
                  if show_start_text:
-                     #font = pygame.font.SysFont(None, 48)
-                     #text_surface = font.render("Press Space to Start", True, (255, 255, 255))
-                     #text_rect = text_surface.get_rect(center=(screen.get_width()//2, 300))
-                     #screen.blit(text_surface, text_rect)
-                    
+                     
                      if color_count <= 10:
                         if color_stage == 0:
                             text_color = (text_color[0], text_color[1] + color_change, text_color[2])
@@ -390,23 +400,20 @@ def update_screen(game_status):
 
                  # Update vertical movement
                  if jumping:
-                    frame = horse_jump_anim["frames"][horse_jump_anim["index"]]
-                    pos = horse_jump_anim["pos"]
+                    #frame = horse_jump_anim["frames"][horse_jump_anim["index"]]
+                    #pos = horse_jump_anim["pos"]
 
                     current_time = pygame.time.get_ticks()
 
                     if current_time - horse_jump_anim["jump_last_update"] >= horse_jump_anim["jump_delay"]:
                         horse_jump_anim["jump_last_update"] = current_time
-                        y_velocity -= gravity
+                        y_velocity -= GRAVITY
                         horse_jump_anim['pos'][1] -= y_velocity
-                        print('pos:', horse_jump_anim['pos'][1], 'velocity:', y_velocity, 'ground_level:', ground_level)
                         # If horse lands back down
                         if horse_jump_anim['pos'][1] >= ground_level:
                             horse_jump_anim['pos'][1] = ground_level
                             jumping = False
-                            horse_jump_anim["index"] = 6
-                    
-
+                            horse_jump_anim["index"] = 6     
 
          pygame.display.update()
 
