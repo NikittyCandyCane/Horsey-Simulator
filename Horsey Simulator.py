@@ -26,6 +26,17 @@ initial_obstacle_wait = 5000
 spacebar_pressed = False
 spacebar_held = False
 
+# Meters traveled text
+meters_traveled = 0
+METER_UPDATE_DELAY = 100
+blit_meters_text_count = 0
+font = pygame.font.SysFont(None, 36)
+meters_text = font.render(f"Meters: {int(meters_traveled)}", True, (255, 255, 255))
+
+# Calculate x-position manually
+meters_text_x = screen.get_width() - meters_text.get_width() - 20  # 20 px padding from right
+meters_text_y = 20  # 20 px from top
+
 obstacles = []
 last_obstacle_time = 0
 obstacle_spawn_delay = 2000  # ms
@@ -45,7 +56,9 @@ HORSE_SCALE = {
 HORSE_X = -30
 HORSE_Y = 130
 
+show_masks = False
 show_start_text = True
+show_meters_text = True
 horse_y_pos_shrink = 455
 horse_x_pos_shrink = 170
 y_velocity = 0
@@ -67,6 +80,10 @@ start_btn = pygame.image.load('image start button.png')
 exit_btn = pygame.image.load('image finish button.png')
 
 btn_hover_sound = pygame.mixer.Sound('sound button click.mp3')
+neigh_sound = pygame.mixer.Sound('neigh.mp3')
+crash_sound = pygame.mixer.Sound('crash.mp3')
+crash_sound.set_volume(0.15)
+neigh_sound.set_volume(0.8)
 
 start_btn = pygame.transform.scale_by(start_btn, 0.8)
 exit_btn = pygame.transform.scale_by(exit_btn, 0.8)
@@ -264,7 +281,9 @@ def detect_collision():
     return mask_image
 
 def game_lose():
-    global game_status, show_start_text, first_jump, done_walking, playing_start_time, HORSE_WALK_LOOP_COUNT
+    global game_status, show_start_text, first_jump, done_walking, playing_start_time, HORSE_WALK_LOOP_COUNT, meters_traveled, blit_meters_text_count
+    pygame.mixer.Sound.play(neigh_sound)
+    pygame.mixer.Sound.play(crash_sound)
     game_status = 'menu'
     for obstacle in obstacles:
         obstacles.remove(obstacle)
@@ -276,6 +295,8 @@ def game_lose():
     HORSE_WALK_LOOP_COUNT = 0
     parallax_bg_anim['delay'] = 80
     horse_walk_anim['delay'] = 150
+    meters_traveled = 0
+    blit_meters_text_count = 30
 
 
 def shrink_horse():
@@ -308,6 +329,7 @@ def shrink_horse():
 
 
 def update_screen(game_status):
+    global meters_traveled, meters_text, meters_text_x, meters_text_y, blit_meters_text_count, show_meters_text, time_since_last_meter_update
     if game_status == 'menu':
             global time_since_last_idle
             global time_until_next_idle
@@ -316,6 +338,15 @@ def update_screen(game_status):
 
             #blit the still frame of parallax_bg
             screen.blit(parallax_bg[0], (0,0))
+
+            #Blit the meters text for a little longer after death
+            if blit_meters_text_count:
+                if show_meters_text:
+                        current_time = pygame.time.get_ticks()
+                        if current_time - time_since_last_meter_update >= METER_UPDATE_DELAY:
+                            time_since_last_meter_update = current_time
+                            blit_meters_text_count -= 1
+                        screen.blit(meters_text, (meters_text_x, meters_text_y))
 
             # screen.blit(horse,(-30,200))
             screen.blit(start_btn,(630,175))
@@ -362,10 +393,11 @@ def update_screen(game_status):
                  else:
                     update_animation(horse_canter_anim)
                  mask_image = detect_collision()
-                 if jumping:
-                     screen.blit(mask_image, (horse_x_pos_shrink, horse_jump_anim['pos'][1]))
-                 else:
-                    screen.blit(mask_image, (horse_x_pos_shrink, horse_y_pos_shrink))
+                 if show_masks:
+                    if jumping:
+                        screen.blit(mask_image, (horse_x_pos_shrink, horse_jump_anim['pos'][1]))
+                    else:
+                        screen.blit(mask_image, (horse_x_pos_shrink, horse_y_pos_shrink))
                 # === Handle obstacle generation ===
                  current_time = pygame.time.get_ticks()
 
@@ -383,11 +415,21 @@ def update_screen(game_status):
                  for obstacle in obstacles[:]:
                      obstacle.update()
                      obstacle.draw(screen)
-                     obstacle.draw_mask(screen)
+                     if show_masks:
+                        obstacle.draw_mask(screen)
  
                      # Remove if it goes off screen (so list doesn't grow forever)
                      if obstacle.is_off_screen():
                          obstacles.remove(obstacle)
+                 if playing_start_time is not None:
+                    if show_meters_text:
+                        current_time = pygame.time.get_ticks()
+                        if current_time - time_since_last_meter_update >= METER_UPDATE_DELAY:
+                            time_since_last_meter_update = pygame.time.get_ticks()
+                            meters_traveled += 1
+                            meters_text = font.render(f"Meters: {meters_traveled}", True, (255, 255, 255))
+                            meters_text_x = screen.get_width() - meters_text.get_width() - 20
+                        screen.blit(meters_text, (meters_text_x, meters_text_y))
 
                  if show_start_text:
                      
@@ -424,6 +466,7 @@ def update_screen(game_status):
                                  if first_jump == False:
                                      playing_start_time = pygame.time.get_ticks()  # record start time here
                                      first_jump = True
+                                     time_since_last_meter_update = pygame.time.get_ticks()
                                  y_velocity = jump_strength  # give it upward force
                                  show_start_text = False
 
