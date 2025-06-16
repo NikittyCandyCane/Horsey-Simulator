@@ -212,7 +212,7 @@ class Obstacle:
         screen.blit(self.image, self.rect)
     
     def draw_mask(self, screen):
-        screen.blit(self.mask_image, (50,200))
+        screen.blit(self.mask_image, self.rect)
 
     def is_off_screen(self):
         return self.rect.right < 0
@@ -236,21 +236,47 @@ def update_animation(anim):
     screen.blit(anim["frames"][anim["index"]], anim["pos"])
 
 def detect_collision():
+
     if jumping:
         horse_mask = pygame.mask.from_surface(horse_jump_anim['frames'][horse_jump_anim['index']])
     else:
         horse_mask = pygame.mask.from_surface(horse_canter_anim['frames'][horse_canter_anim['index']])
     mask_image = horse_mask.to_surface(setcolor=(255, 0, 0, 150), unsetcolor=(0, 0, 0, 0))
-
+    
     for obstacle in obstacles:
         if jumping:
-            if horse_mask.overlap(obstacle.mask, (obstacle.x - horse_x_pos_shrink, obstacle.y - horse_jump_anim['pos'][1])):
+            if horse_mask.overlap(obstacle.mask, (obstacle.rect[0] - horse_x_pos_shrink, obstacle.rect[1] - horse_jump_anim['pos'][1])):
                 print('collision detected')
+                game_lose()
+                
         else:
-            if horse_mask.overlap(obstacle.mask, (obstacle.x - horse_x_pos_shrink, obstacle.y - horse_y_pos_shrink)):
+            if horse_mask.overlap(obstacle.mask, (obstacle.rect[0] - horse_x_pos_shrink, obstacle.rect[1] - horse_y_pos_shrink)):
                 print('collision detected')
+                game_lose()
+
+        offset_x = int(obstacle.rect[0] - horse_x_pos_shrink)
+        offset_y = int(obstacle.rect[1] - horse_y_pos_shrink)
+        print("Offset to obstacle:", (offset_x, offset_y))
+
+        result = horse_mask.overlap(obstacle.mask, (offset_x, offset_y))
+        print("Collision result:", result)
 
     return mask_image
+
+def game_lose():
+    global game_status, show_start_text, first_jump, done_walking, playing_start_time, HORSE_WALK_LOOP_COUNT
+    game_status = 'menu'
+    for obstacle in obstacles:
+        obstacles.remove(obstacle)
+    show_start_text = True
+    first_jump = False
+    done_walking = False
+    playing_start_time = None
+    HORSE_SCALE['scale'] = 8
+    HORSE_WALK_LOOP_COUNT = 0
+    parallax_bg_anim['delay'] = 80
+    horse_walk_anim['delay'] = 150
+
 
 def shrink_horse():
     global horse_still_for_scaling
@@ -336,7 +362,10 @@ def update_screen(game_status):
                  else:
                     update_animation(horse_canter_anim)
                  mask_image = detect_collision()
-                 screen.blit(mask_image, (10,10))
+                 if jumping:
+                     screen.blit(mask_image, (horse_x_pos_shrink, horse_jump_anim['pos'][1]))
+                 else:
+                    screen.blit(mask_image, (horse_x_pos_shrink, horse_y_pos_shrink))
                 # === Handle obstacle generation ===
                  current_time = pygame.time.get_ticks()
 
@@ -400,8 +429,6 @@ def update_screen(game_status):
 
                  # Update vertical movement
                  if jumping:
-                    #frame = horse_jump_anim["frames"][horse_jump_anim["index"]]
-                    #pos = horse_jump_anim["pos"]
 
                     current_time = pygame.time.get_ticks()
 
