@@ -11,20 +11,35 @@ pygame.mixer.init()
 screen = pygame.display.set_mode((1200, 750))
 
 # Set variables that are used later
-game_status = 'menu'
-soundplayed = False
-time_since_last_idle = 0
-time_until_next_idle = random.randint(3000,8000)
-current_anim = "idle"
-idle_delay_set_yet = False
-clock = pygame.time.Clock()
-jumping = False
-first_jump = False
-done_walking = False
-playing_start_time = None
-initial_obstacle_wait = 5000 
-spacebar_pressed = False
-spacebar_held = False
+game_status = 'menu'          # what is the game status?
+soundplayed = False           # has the sound for hovering over the menu buttons played?
+time_since_last_idle = 0      # how long since the last idle animation occured?
+time_until_next_idle = random.randint(3000,8000)  # how long until the next idle animation occurs?
+current_anim = "idle"         # the current animation (only for menu screen)
+idle_delay_set_yet = False    # has the idle delay been set yet?
+clock = pygame.time.Clock()   # make accessing the time easier
+jumping = False               # are they currently jumping?
+first_jump = False            # have they taken their first jump yet?
+done_walking = False          # are they done the walking animation?
+playing_start_time = None     # a snapshot of the time taken after your first jump
+initial_obstacle_wait = 5000  # the initial wait after the first jump for obstacles to start spawning
+spacebar_pressed = False      # the spacebar does not start off as pressed
+spacebar_held = False         # the spacebar does not start off as held
+show_masks = False            # should masks be shown? (collision)
+show_start_text = True        # should start text be shown?
+show_meters_text = True       # should meter tracker text be shown?
+horse_y_pos_shrink = 455      # the horse's y position after shrunken
+horse_x_pos_shrink = 170      # the horse's x position after shrunken
+y_velocity = 0      # the horse's velocity
+jump_strength = 70  # how high the horse jumps
+GRAVITY = 13        # how fast the horse falls back down
+ground_level = 455  # the normal horse y position
+
+# text colour variables
+text_color = (168, 50, 50)
+color_stage = 0
+color_count = 0
+color_change = 11.8
 
 # Meters traveled text
 meters_traveled = 0
@@ -37,39 +52,22 @@ meters_text = font.render(f"Meters: {int(meters_traveled)}", True, (255, 255, 25
 meters_text_x = screen.get_width() - meters_text.get_width() - 20  # 20 px padding from right
 meters_text_y = 20  # 20 px from top
 
+# Set obstacles list and time since the last obstacle was created, as well as the spawn delay between obstacles
 obstacles = []
 last_obstacle_time = 0
-obstacle_spawn_delay = 2000  # ms
+OBSTACLE_SPAWN_DELAY = 2000  # ms
 
+#Store horse position aafter shrink, and the amount of times it has went through the walking animation loop
 HORSE_POS_AFTER_SHRINK = (170,455)
 HORSE_WALK_LOOP_COUNT = 0
 
+#Store constants for the start and exit buttons
 START_BTN_POS = (630,175)
 EXIT_BTN_POS = (630,425)
 
-HORSE_SCALE = {
-     'scale': 8,
-     'delay': 30,
-     'last_update': 0
-}
-
+# STORE HORSE POSITION FOR MENU SCREEN
 HORSE_X = -30
 HORSE_Y = 130
-
-show_masks = False
-show_start_text = True
-show_meters_text = True
-horse_y_pos_shrink = 455
-horse_x_pos_shrink = 170
-y_velocity = 0
-jump_strength = 70  # how high the horse jumps
-GRAVITY = 13        # how fast the horse falls back down
-ground_level = 455  # the normal horse y position
-
-text_color = (168, 50, 50)
-color_stage = 0
-color_count = 0
-color_change = 11.8
 
 #UNPACK TUPLES
 (START_BTN_POS_X, START_BTN_POS_Y) = (START_BTN_POS)
@@ -99,21 +97,31 @@ horse_still_original = pygame.image.load('/Users/nicolezhang/MyCode/Horse animat
 pygame.display.set_caption('Horsey Simulator')
 pygame.display.set_icon(horse_still_original)
 
+HORSE_SCALE = {
+     'scale': 8,
+     'delay': 30,
+     'last_update': 0
+}
+
 # Make scaled versions for menu and animation
 horse_still = pygame.transform.scale_by(horse_still_original, 8)
 horse_still_for_scaling = pygame.transform.scale_by(horse_still_original, HORSE_SCALE['scale'])
 
+# Images that can be used as obstacles
 obstacle_images = [
     '/Users/nicolezhang/MyCode/Obstacles/log.png',
     '/Users/nicolezhang/MyCode/Obstacles/rock.png'
 ]
 
+# Code frames stored for the future, if I want to add onto the game
 # horse_tail_swish = [pygame.image.load('tile000.png'), pygame.image.load('tile001.png'), pygame.image.load('tile002.png'), pygame.image.load('tile003.png'), pygame.image.load('tile004.png'), pygame.image.load('tile05.png'), pygame.image.load('tile006.png'), pygame.image.load('tile007.png'), pygame.image.load('tile008.png'), pygame.image.load('tile009.png')]
 # horse_graze = [pygame.image.load('tile0010.png'), pygame.image.load('tile011.png'), pygame.image.load('tile012.png'), pygame.image.load('tile013.png'), pygame.image.load('tile014.png'), pygame.image.load('tile015.png'), pygame.image.load('tile016.png')]
 # horse_walk = [pygame.image.load('tile018.png'), pygame.image.load('tile019.png'), pygame.image.load('tile020.png'), pygame.image.load('tile021.png'), pygame.image.load('tile022.png'), pygame.image.load('tile023.png'), pygame.image.load('tile024.png'), pygame.image.load('tile025.png'), pygame.image.load('tile026.png')]
 # horse_canter = [pygame.image.load('tile027.png'), pygame.image.load('tile028.png'), pygame.image.load('tile029.png'), pygame.image.load('tile030.png'), pygame.image.load('tile031.png'), pygame.image.load('tile032.png'), pygame.image.load('tile033.png'), pygame.image.load('tile034.png')]
 # horse_gallop = [pygame.image.load('tile036.png'), pygame.image.load('tile037.png'), pygame.image.load('tile038.png'), pygame.image.load('tile039.png'), pygame.image.load('tile040.png'), pygame.image.load('tile041.png')]
 # horse_jump = [pygame.image.load('jump00.png'), pygame.image.load('jump01.png'), pygame.image.load('jump02.png'), pygame.image.load('jump03.png'), pygame.image.load('jump04.png'), pygame.image.load('jump05.png'), pygame.image.load('jump06.png'), pygame.image.load('jump07.png'), pygame.image.load('jump08.png'), pygame.image.load('jump09.png'), pygame.image.load('jump10.png'), pygame.image.load('jump11.png'), pygame.image.load('jump12.png'), pygame.image.load('jump13.png'), pygame.image.load('jump14.png')]
+
+# I use lists and loops to load in all the images, iterating through each file name and appending it to the list
 
 horse_tail_swish = []
 for i in range(0,9):
@@ -143,6 +151,7 @@ for i in range(18,26):
 
 parallax_bg = []
 for i in range(320):
+     # make sure theres always 3 digits
      i = f"{i:03}"
      img_parallax_bg = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Parallax background/frame_{i}_delay-0.05s.gif'), (1.39))
      parallax_bg.append(img_parallax_bg)
@@ -206,12 +215,15 @@ parallax_bg_anim = {
     "pos": (0, 0)                 # Where to draw the image
 }
 
+#Make sure background music is always playing
 pygame.mixer.music.load("Royale High Campus 3 Music - Castle Dorms (Flowering & Tidalglow).mp3")
 pygame.mixer.music.set_volume(0.4)
+#play forever
 pygame.mixer.music.play(-1)
 
 # Obstacle Class
 class Obstacle:
+    # define its own variables
     def __init__(self, image, x, y, speed):
         self.image = pygame.image.load(image)
         self.image = pygame.transform.scale_by(self.image, 0.3)
@@ -222,21 +234,27 @@ class Obstacle:
         self.x = x
         self.y = y
 
+    # update the speed
     def update(self):
         self.rect.x -= self.speed
 
+    # blit it onto the screen
     def draw(self, screen):
         screen.blit(self.image, self.rect)
     
+    # draw its mask
     def draw_mask(self, screen):
         screen.blit(self.mask_image, self.rect)
 
+    # is it off the screen? returns boolean
     def is_off_screen(self):
+        # self.rect.right = x value of the right of the rect
         return self.rect.right < 0
 
 # Functions
 
 def update_animation(anim):
+    # PURPOSE: update the animation. if the difference between the time snapshot of the last update and the current time are greater than or equal to the delay time, switch frames and reset
     global current_anim
     global idle_delay_set_yet
 
@@ -245,21 +263,22 @@ def update_animation(anim):
     if current_time - anim["last_update"] >= anim["delay"]:
         anim["last_update"] = current_time
         anim["index"] = (anim["index"] + 1) % len(anim["frames"])
+        # if the idle animation is completed, make the current animation the still horse
         if anim['index'] == 0:
             current_anim = 'idle'
             
-    # Blit the current frame (after fixing index logic)
-    #anim["frames"][anim["index"]] = pygame.transform.scale_by(anim["frames"][anim["index"]], (HORSE_SCALE['scale']))
     screen.blit(anim["frames"][anim["index"]], anim["pos"])
 
 def detect_collision():
-
+    # PURPOSE: get & return the horse's mask, and detect collisions with obstacles
+    # if the horse is jumping, use the image from the jumping horse. If not, use it from the cantering horse.
     if jumping:
         horse_mask = pygame.mask.from_surface(horse_jump_anim['frames'][horse_jump_anim['index']])
     else:
         horse_mask = pygame.mask.from_surface(horse_canter_anim['frames'][horse_canter_anim['index']])
     mask_image = horse_mask.to_surface(setcolor=(255, 0, 0, 150), unsetcolor=(0, 0, 0, 0))
     
+    # for each obstacle, if its mask collides with the horse's mask, end the game
     for obstacle in obstacles:
         if jumping:
             if horse_mask.overlap(obstacle.mask, (obstacle.rect[0] - horse_x_pos_shrink, obstacle.rect[1] - horse_jump_anim['pos'][1])):
@@ -271,16 +290,10 @@ def detect_collision():
                 print('collision detected')
                 game_lose()
 
-        offset_x = int(obstacle.rect[0] - horse_x_pos_shrink)
-        offset_y = int(obstacle.rect[1] - horse_y_pos_shrink)
-        print("Offset to obstacle:", (offset_x, offset_y))
-
-        result = horse_mask.overlap(obstacle.mask, (offset_x, offset_y))
-        print("Collision result:", result)
-
     return mask_image
 
 def game_lose():
+    # PURPOSE: reset variables so that the game is repeatable, and make variables so that the score blits for a little while after loss
     global game_status, show_start_text, first_jump, done_walking, playing_start_time, HORSE_WALK_LOOP_COUNT, meters_traveled, blit_meters_text_count
     pygame.mixer.Sound.play(neigh_sound)
     pygame.mixer.Sound.play(crash_sound)
@@ -300,35 +313,40 @@ def game_lose():
 
 
 def shrink_horse():
+    # PURPOSE: after you press start, the horse will shrink. This function is responsible for that.
     global horse_still_for_scaling
 
     current_time = pygame.time.get_ticks()
-
+    
+    # if it has been long enough time, make the horse shrink.
     if current_time - HORSE_SCALE['last_update'] >= HORSE_SCALE['delay']:
         HORSE_SCALE['last_update'] = current_time
         HORSE_SCALE['scale'] -= 0.5
 
         horse_still_for_scaling = pygame.transform.scale_by(horse_still_original, HORSE_SCALE['scale'])
 
-    # Get scaled size
+    # What is the width and height of the current version of the scaled horse?
     scaled_width = horse_still_for_scaling.get_width()
     scaled_height = horse_still_for_scaling.get_height()
 
-    # Get original image size (for positioning math)
+    # What is the width and height of the original horse?
     original_width = horse_still.get_width()
     original_height = horse_still.get_height()
 
-    # Find original bottom Y and center X
+    # Gets the bottom y pos of the original horse, as well as  the center x position of the original horse.
     original_bottom_y = HORSE_Y + original_height
     original_center_x = HORSE_X + original_width // 2
 
-    # Now calculate new top-left position for blit
+    # Based on where we want the horse to show up, we need to find the top left corner of the new image. We can find this by subtracting the dimensions of the scaled horse.
     blit_x = original_center_x - scaled_width // 2
     blit_y = original_bottom_y - scaled_height
+
+    # Blit the new scaled horse!
     screen.blit(horse_still_for_scaling, (blit_x, blit_y))
 
-
 def update_screen(game_status):
+    # PURPOSE: depending on the var "game_status", update the screen
+    # meters text variables must be globalled at the top, or else it would be called before assigned
     global meters_traveled, meters_text, meters_text_x, meters_text_y, blit_meters_text_count, show_meters_text, time_since_last_meter_update
     if game_status == 'menu':
             global time_since_last_idle
@@ -339,7 +357,8 @@ def update_screen(game_status):
             #blit the still frame of parallax_bg
             screen.blit(parallax_bg[0], (0,0))
 
-            #Blit the meters text for a little longer after death
+            # Blit the meters text for a little longer after death. Does this by checking if the difference between current 
+            # time and snapshot time are enough, then loops through a couple of times.
             if blit_meters_text_count:
                 if show_meters_text:
                         current_time = pygame.time.get_ticks()
@@ -348,15 +367,16 @@ def update_screen(game_status):
                             blit_meters_text_count -= 1
                         screen.blit(meters_text, (meters_text_x, meters_text_y))
 
-            # screen.blit(horse,(-30,200))
+            # draw the buttons 
             screen.blit(start_btn,(630,175))
             screen.blit(exit_btn,(630,425))
             current_time = pygame.time.get_ticks()
-            #If enough time has gone by, do an idle animation
+            # If enough time has gone by, do an idle animation
             if current_time - time_since_last_idle >= time_until_next_idle:
                     current_anim = choice(["tail", "graze"])
                     time_since_last_idle = current_time
                     time_until_next_idle = random.randint(3000,8000)
+            # Depending on the random animation chosen, update that animation
             if current_anim == "idle":
                 screen.blit(horse_still, (HORSE_X, HORSE_Y))
             elif current_anim == "graze":
@@ -366,15 +386,16 @@ def update_screen(game_status):
             pygame.display.update()
 
     elif game_status == 'playing':
+         # global variables needed in this loop
          global HORSE_WALK_LOOP_COUNT
-         global obstacles, last_obstacle_time, obstacle_spawn_delay
+         global obstacles, last_obstacle_time, OBSTACLE_SPAWN_DELAY
          global jumping, horse_y_pos_shrink, horse_x_pos_shrink
          global color_count, color_change
          global color_stage, text_color
          global spacebar_held
          global y_velocity
          global playing_start_time, show_start_text, first_jump
-         screen.blit(parallax_bg[0], (0,0))
+
          if HORSE_SCALE['scale'] > 3:
           shrink_horse()
          else:
@@ -403,7 +424,7 @@ def update_screen(game_status):
 
                  # Only spawn obstacles after waiting initial delay from when playing started
                  if playing_start_time is not None and (current_time - playing_start_time) > initial_obstacle_wait:
-                     if current_time - last_obstacle_time > obstacle_spawn_delay:
+                     if current_time - last_obstacle_time > OBSTACLE_SPAWN_DELAY:
                          img = random.choice(obstacle_images)
                          y = 650
                          speed = 16.7
