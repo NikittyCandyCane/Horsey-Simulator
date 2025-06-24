@@ -396,9 +396,15 @@ def update_screen(game_status):
          global y_velocity
          global playing_start_time, show_start_text, first_jump
 
+         # blit the parallax background. This only matters while the horse is shrinking.
+         screen.blit(parallax_bg[0], (0,0))
+
+         # if the horse isn't bigger than a scale factor of 3, keep shrinking it
          if HORSE_SCALE['scale'] > 3:
           shrink_horse()
+         
          else:
+             # if the horse has finished shrinking, start walking. Run the animation 120 times.
              if HORSE_WALK_LOOP_COUNT < 120:
                 HORSE_WALK_LOOP_COUNT += 1
                 parallax_bg_anim['delay'] -= 0.5
@@ -406,15 +412,20 @@ def update_screen(game_status):
                 update_animation(parallax_bg_anim)
                 update_animation(horse_walk_anim)
              else:
+                 # if the horse has finished walking, start cantering. make this known with var "done_walking".
+                 # if the spacebar is held, then make spacebar_held true.
                  spacebar_held = pygame.key.get_pressed()[pygame.K_SPACE]
                  done_walking = True
+                 # update the parallax background, and the canter/jump animation, depending on whether the horse is jumping or not.
                  update_animation(parallax_bg_anim)
                  if jumping:
                     update_animation(horse_jump_anim)
                  else:
                     update_animation(horse_canter_anim)
+                 # get the horse's mask from detect_collision()
                  mask_image = detect_collision()
                  if show_masks:
+                    # make sure it blits at the correct spot
                     if jumping:
                         screen.blit(mask_image, (horse_x_pos_shrink, horse_jump_anim['pos'][1]))
                     else:
@@ -425,23 +436,25 @@ def update_screen(game_status):
                  # Only spawn obstacles after waiting initial delay from when playing started
                  if playing_start_time is not None and (current_time - playing_start_time) > initial_obstacle_wait:
                      if current_time - last_obstacle_time > OBSTACLE_SPAWN_DELAY:
-                         img = random.choice(obstacle_images)
+                         img = random.choice(obstacle_images)   # choose a random image from the list loaded before
                          y = 650
                          speed = 16.7
                          x = screen.get_width() + 100  # Start off-screen to the right
                          obstacles.append(Obstacle(img, x, y, speed))
-                         last_obstacle_time = current_time
+                         last_obstacle_time = current_time       # the last obstacle created was created NOW!
                 
-                 # === Move and draw obstacles ===
+                 # === Move and draw obstacles (and masks if on) ===
                  for obstacle in obstacles[:]:
                      obstacle.update()
                      obstacle.draw(screen)
                      if show_masks:
                         obstacle.draw_mask(screen)
  
-                     # Remove if it goes off screen (so list doesn't grow forever)
+                     # Remove if it goes off screen (so list doesn't grow forever and cause lag)
                      if obstacle.is_off_screen():
                          obstacles.remove(obstacle)
+                 # if they have pressed the spacebar at least once, then the meters bar should be shown. 
+                 # if an amount of time (METER_UPDATE_DELAY) has passed, add more meters to the meter tracker, and update the text, then blit it
                  if playing_start_time is not None:
                     if show_meters_text:
                         current_time = pygame.time.get_ticks()
@@ -452,6 +465,8 @@ def update_screen(game_status):
                             meters_text_x = screen.get_width() - meters_text.get_width() - 20
                         screen.blit(meters_text, (meters_text_x, meters_text_y))
 
+                 # if the start text is being shown, scroll through the RGB codes to make the text gradient rainbow.
+                 # depending on what RGB code is currently shown, the RGB numbers must change in different stages (color_stage)
                  if show_start_text:
                      
                      if color_count <= 10:
@@ -476,14 +491,18 @@ def update_screen(game_status):
                         elif color_stage == 6:
                             color_stage = 0
                      else:
+                        # when it has finished the color count to 10, reset it
                         color_stage += 1
                         color_count = 0
-
+                     
+                     # load the text displayed, as well as its font, then draw it
                      text_displayed = pygame.font.Font('Supermario.ttf', 60).render(str('PRESS SPACE TO START'), True, text_color)
                      screen.blit(text_displayed, (200, 300))
-                
+                 
+                 # if the spacebar is pressed/held, the game is playing, they arent already jumping, and the walking animation has finished, then jump
                  if (spacebar_pressed or spacebar_held) and game_status == 'playing' and not jumping and done_walking:
                                  jumping = True
+                                 # if it has been their first jump, the start text must disappear, and the meter tracker must show
                                  if first_jump == False:
                                      playing_start_time = pygame.time.get_ticks()  # record start time here
                                      first_jump = True
@@ -491,9 +510,10 @@ def update_screen(game_status):
                                  y_velocity = jump_strength  # give it upward force
                                  show_start_text = False
 
-                 # Update vertical movement
+                 # If they are jumping, update the animation for it. Since the jumping animation logic is more complex than the others, 
+                 # it cannot be run using the update_animation() func
                  if jumping:
-
+                    
                     current_time = pygame.time.get_ticks()
 
                     if current_time - horse_jump_anim["jump_last_update"] >= horse_jump_anim["jump_delay"]:
@@ -512,25 +532,35 @@ def update_screen(game_status):
 while True:
 
     for event in pygame.event.get():
+        # if they press the x button, close the game safely
         if event.type == pygame.QUIT:
             pygame.mixer.quit()
             pygame.quit()
         if event.type == pygame.MOUSEBUTTONDOWN:
+            # if they click on the start button, then start. if they click on the exit button, then close the game.
             if start_btn_rect.collidepoint(pygame.mouse.get_pos()):
                 game_status = 'playing'
             if exit_btn_rect.collidepoint(pygame.mouse.get_pos()):
                 pygame.mixer.quit()
                 pygame.quit()
+        # if they press the spacebar, then store that information using spacebar_pressed boolean.
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 spacebar_pressed = True
         else:
             spacebar_pressed = False
+    # if the mouse has hovered over a button, then check if a sound has already played, and make sure they are on the menu screen. Play the click! sound.
     if start_btn_rect.collidepoint(pygame.mouse.get_pos()) or exit_btn_rect.collidepoint(pygame.mouse.get_pos()):
         if soundplayed == False and game_status == 'menu':
             pygame.mixer.Sound.play(btn_hover_sound)
             soundplayed = True            
     else:
          soundplayed = False
+    
+    # make sure the game doesn't lag the computer too much by setting a limit on time.
     clock.tick(60)
+
+    # run the update_screen func.
     update_screen(game_status)
+
+print('hi')
