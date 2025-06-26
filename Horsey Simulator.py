@@ -1,8 +1,11 @@
-
 # Import libraries
 import pygame
 import random
 from random import choice
+from pathlib import Path
+
+# Get the folder the script is running in
+BASE_DIR = Path(__file__).parent
 
 # Initialize pygame and sound mixer
 pygame.init()
@@ -74,12 +77,12 @@ HORSE_Y = 130
 (EXIT_BTN_POS_X, EXIT_BTN_POS_Y) = (EXIT_BTN_POS)
 
 # Load Images and sounds
-start_btn = pygame.image.load('image start button.png')
-exit_btn = pygame.image.load('image finish button.png')
+start_btn = pygame.image.load(BASE_DIR.parent / 'MyCode' / 'image start button.png')
+exit_btn = pygame.image.load(BASE_DIR.parent / 'MyCode' / 'image finish button.png')
 
-btn_hover_sound = pygame.mixer.Sound('sound button click.mp3')
-neigh_sound = pygame.mixer.Sound('neigh.mp3')
-crash_sound = pygame.mixer.Sound('crash.mp3')
+btn_hover_sound = pygame.mixer.Sound(BASE_DIR.parent / 'MyCode' / 'sound button click.mp3')
+neigh_sound = pygame.mixer.Sound(BASE_DIR.parent / 'MyCode' / 'neigh.mp3')
+crash_sound = pygame.mixer.Sound(BASE_DIR.parent / 'MyCode' / 'crash.mp3')
 crash_sound.set_volume(0.15)
 neigh_sound.set_volume(0.8)
 
@@ -91,12 +94,13 @@ start_btn_rect = pygame.Rect(START_BTN_POS_X, START_BTN_POS_Y, 448*0.8, 170*0.8)
 exit_btn_rect = pygame.Rect(EXIT_BTN_POS_X, EXIT_BTN_POS_Y, 445*0.8, 168*0.8)
 
 # Load original unscaled
-horse_still_original = pygame.image.load('/Users/nicolezhang/MyCode/Horse animations basic/tile001.png')
+horse_still_original = pygame.image.load(BASE_DIR.parent / 'MyCode' / 'Horse animations basic/tile001.png')
 
 # Set Icon and Caption
 pygame.display.set_caption('Horsey Simulator')
 pygame.display.set_icon(horse_still_original)
 
+# Horse scale dictionary (used during shrinking)
 HORSE_SCALE = {
      'scale': 8,
      'delay': 30,
@@ -109,8 +113,8 @@ horse_still_for_scaling = pygame.transform.scale_by(horse_still_original, HORSE_
 
 # Images that can be used as obstacles
 obstacle_images = [
-    '/Users/nicolezhang/MyCode/Obstacles/log.png',
-    '/Users/nicolezhang/MyCode/Obstacles/rock.png'
+    BASE_DIR.parent / 'MyCode' / 'Obstacles/log.png',
+    BASE_DIR.parent / 'MyCode' / 'Obstacles/rock.png'
 ]
 
 # Code frames stored for the future, if I want to add onto the game
@@ -125,100 +129,100 @@ obstacle_images = [
 
 horse_tail_swish = []
 for i in range(0,9):
-     img_horse_tail_swish = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile00{i}.png'), (HORSE_SCALE["scale"]))
+     img_horse_tail_swish = pygame.transform.scale_by(pygame.image.load(BASE_DIR.parent / 'MyCode' / f'Horse animations basic/tile00{i}.png'), (HORSE_SCALE["scale"]))
      horse_tail_swish.append(img_horse_tail_swish)
 
 horse_graze = []
 for i in range(10,17):
-     img_horse_graze = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), (HORSE_SCALE['scale']))
+     img_horse_graze = pygame.transform.scale_by(pygame.image.load(BASE_DIR.parent / 'MyCode' / f'Horse animations basic/tile0{i}.png'), (HORSE_SCALE['scale']))
      horse_graze.append(img_horse_graze)
 
 horse_jump = []
 for i in range(14):
      i = f"{i:02}"
-     img_horse_jump = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animation jump/jump{i}.png'), 3)
+     img_horse_jump = pygame.transform.scale_by(pygame.image.load(BASE_DIR.parent / 'MyCode' / f'Horse animation jump/jump{i}.png'), 3)
      horse_jump.append(img_horse_jump)
 
 horse_canter = []
 for i in range(27,35):
-     img_horse_canter = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), 3)
+     img_horse_canter = pygame.transform.scale_by(pygame.image.load(BASE_DIR.parent / 'MyCode' / f'Horse animations basic/tile0{i}.png'), 3)
      horse_canter.append(img_horse_canter)
 
 horse_walk = []
 for i in range(18,26):
-     img_horse_walk = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Horse animations basic/tile0{i}.png'), 3)
+     img_horse_walk = pygame.transform.scale_by(pygame.image.load(BASE_DIR.parent / 'MyCode' / f'Horse animations basic/tile0{i}.png'), 3)
      horse_walk.append(img_horse_walk)
 
 parallax_bg = []
 for i in range(320):
      # make sure theres always 3 digits
      i = f"{i:03}"
-     img_parallax_bg = pygame.transform.scale_by(pygame.image.load(f'/Users/nicolezhang/MyCode/Parallax background/frame_{i}_delay-0.05s.gif'), (1.39))
+     img_parallax_bg = pygame.transform.scale_by(pygame.image.load(BASE_DIR.parent / 'MyCode' / f'Parallax background/frame_{i}_delay-0.05s.gif'), (1.39))
      parallax_bg.append(img_parallax_bg)
 
 # Animation Dictionaries
 horse_tail_anim = {
-    "frames": horse_tail_swish,       # List of images
-    "index": 0,                       # Current frame index
+    "frames": horse_tail_swish,      # List of images
+    "index": 0,                      # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 200,                    # How often it updates (in ms)
-    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
+    "pos": (HORSE_X, HORSE_Y)        # (position) Where to draw the image
 }
 
 horse_graze_anim = {
-    "frames": horse_graze,       # List of images
-    "index": 0,                       # Current frame index
+    "frames": horse_graze,           # List of images
+    "index": 0,                      # Current frame index
     "last_update": 0,                # When it last changed frames
     "delay": 350,                    # How often it updates (in ms)
-    "pos": (HORSE_X, HORSE_Y)                 # Where to draw the image
+    "pos": (HORSE_X, HORSE_Y)        # (position) Where to draw the image
 }
 
 horse_walk_anim = {
-    "frames": horse_walk,       # List of images
-    "index": 0,                       # Current frame index
-    "last_update": 0,                # When it last changed frames
-    "delay": 150,                    # How often it updates (in ms)
-    "pos": (horse_x_pos_shrink, horse_y_pos_shrink)                 # Where to draw the image
+    "frames": horse_walk,                               # List of images
+    "index": 0,                                         # Current frame index
+    "last_update": 0,                                   # When it last changed frames
+    "delay": 150,                                       # How often it updates (in ms)
+    "pos": (horse_x_pos_shrink, horse_y_pos_shrink)     # (position) Where to draw the image
 }
 
 horse_jump_anim = {
-    "frames": horse_jump,       # List of images
-    "index": 6,                       # Current frame index
-    "last_update": 0,                # When it last changed frames
-    "delay": 80,                    # How often it updates (in ms)
-    "pos": [horse_x_pos_shrink, 455],               # Where to draw the image
-    "jump_delay": 40,
-    "jump_last_update": 0
+    "frames": horse_jump,                # List of images
+    "index": 6,                          # Current frame index
+    "last_update": 0,                    # When it last changed frames
+    "delay": 80,                         # How often it updates (in ms)
+    "pos": [horse_x_pos_shrink, 455],    # Where to draw the image
+    "jump_delay": 40,                    # How often the jump updates
+    "jump_last_update": 0                # (position) When it last updates the jump
 }
 
 horse_canter_anim = {
-    "frames": horse_canter,       # List of images
-    "index": 0,                       # Current frame index
-    "last_update": 0,                # When it last changed frames
-    "delay": 100,                    # How often it updates (in ms)
-    "pos": (horse_x_pos_shrink, horse_y_pos_shrink)                # Where to draw the image
+    "frames": horse_canter,                           # List of images
+    "index": 0,                                       # Current frame index
+    "last_update": 0,                                 # When it last changed frames
+    "delay": 100,                                     # How often it updates (in ms)
+    "pos": (horse_x_pos_shrink, horse_y_pos_shrink)   # (position) Where to draw the image
 }
 
 horse_gallop_anim = {
-    "frames": horse_tail_swish,       # List of images
-    "index": 0,                       # Current frame index
-    "last_update": 0,                # When it last changed frames
-    "delay": 200,                    # How often it updates (in ms)
-    "pos": (horse_x_pos_shrink, horse_y_pos_shrink)                 # Where to draw the image
+    "frames": horse_tail_swish,                         # List of images
+    "index": 0,                                         # Current frame index
+    "last_update": 0,                                   # When it last changed frames
+    "delay": 200,                                       # How often it updates (in ms)
+    "pos": (horse_x_pos_shrink, horse_y_pos_shrink)     # (position) Where to draw the image
 }
 
 parallax_bg_anim = {
-    "frames": parallax_bg,       # List of images
-    "index": 0,                       # Current frame index
-    "last_update": 0,                # When it last changed frames
-    "delay": 80,                    # How often it updates (in ms)
-    "pos": (0, 0)                 # Where to draw the image
+    "frames": parallax_bg,        # List of images
+    "index": 0,                   # Current frame index
+    "last_update": 0,             # When it last changed frames
+    "delay": 80,                  # How often it updates (in ms)
+    "pos": (0, 0)                 # (position) Where to draw the image
 }
 
-#Make sure background music is always playing
-pygame.mixer.music.load("Royale High Campus 3 Music - Castle Dorms (Flowering & Tidalglow).mp3")
+# Load background music (taken from Royal High... yes the Roblox game...)
+pygame.mixer.music.load(BASE_DIR.parent / 'MyCode' / "Royale High Campus 3 Music - Castle Dorms (Flowering & Tidalglow).mp3")
 pygame.mixer.music.set_volume(0.4)
-#play forever
+# Play forever
 pygame.mixer.music.play(-1)
 
 # Obstacle Class
@@ -251,7 +255,7 @@ class Obstacle:
         # self.rect.right = x value of the right of the rect
         return self.rect.right < 0
 
-# Functions
+# functiontions
 
 def update_animation(anim):
     # PURPOSE: update the animation. if the difference between the time snapshot of the last update and the current time are greater than or equal to the delay time, switch frames and reset
@@ -313,7 +317,7 @@ def game_lose():
 
 
 def shrink_horse():
-    # PURPOSE: after you press start, the horse will shrink. This function is responsible for that.
+    # PURPOSE: after you press start, the horse will shrink. This functiontion is responsible for that.
     global horse_still_for_scaling
 
     current_time = pygame.time.get_ticks()
@@ -496,7 +500,7 @@ def update_screen(game_status):
                         color_count = 0
                      
                      # load the text displayed, as well as its font, then draw it
-                     text_displayed = pygame.font.Font('Supermario.ttf', 60).render(str('PRESS SPACE TO START'), True, text_color)
+                     text_displayed = pygame.font.Font(BASE_DIR.parent / 'MyCode' / 'Supermario.ttf', 60).render(str('PRESS SPACE TO START'), True, text_color)
                      screen.blit(text_displayed, (200, 300))
                  
                  # if the spacebar is pressed/held, the game is playing, they arent already jumping, and the walking animation has finished, then jump
@@ -511,7 +515,7 @@ def update_screen(game_status):
                                  show_start_text = False
 
                  # If they are jumping, update the animation for it. Since the jumping animation logic is more complex than the others, 
-                 # it cannot be run using the update_animation() func
+                 # it cannot be run using the update_animation() function
                  if jumping:
                     
                     current_time = pygame.time.get_ticks()
@@ -560,7 +564,5 @@ while True:
     # make sure the game doesn't lag the computer too much by setting a limit on time.
     clock.tick(60)
 
-    # run the update_screen func.
+    # run the update_screen functiontion.
     update_screen(game_status)
-
-print('hi')
