@@ -12,9 +12,9 @@ Open your terminal, and follow these steps:
 
 1. Clone the repository
 
-Run these commands
+Run these commands:
 
-: git clone https://github.com/NikittyCandyCane/Fishi
+git clone https://github.com/NikittyCandyCane/Fishi
 
 cd fishi
 
@@ -22,7 +22,7 @@ cd fishi
 
 on MAC run these: python3 -m venv venv source venv/bin/activate
 
-on WINDOWS runes: python3 -m venv venv venv/Scripts/activate
+on WINDOWS run these: python3 -m venv venv venv/Scripts/activate
 
 3. Install dependencies
 
